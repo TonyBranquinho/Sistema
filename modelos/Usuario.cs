@@ -2,7 +2,7 @@
 {
     public class Usuario
     {
-        public int id {  get; set; }
+        public int Id {  get; set; }
         public string Nome { get; set; }
         public string Email { get; set; }
 
@@ -17,7 +17,7 @@
 
         public Usuario(int id, string nome, string email, string senhaHash, bool ativo)
         {
-            this.id = id;
+            this.Id = id;
             Nome = nome;
             Email = email;
             SenhaHash = senhaHash;
