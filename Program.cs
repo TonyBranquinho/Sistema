@@ -1,3 +1,7 @@
+using Sistema.repository;
+using Microsoft.EntityFrameworkCore;
+using Pomelo.EntityFrameworkCore.MySql;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -7,7 +11,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
+
+// 1. Pega a string de conexão do seu appsettings.json
+var connectionString = builder.Configuration.GetConnectionString("ConexaoPadrao");
+
+// 2. Configura o Contexto para usar MySQL com essa string
+builder.Services.AddDbContext<MeuDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+
+
+
 var app = builder.Build();
+
+
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
