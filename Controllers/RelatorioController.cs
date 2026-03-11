@@ -2,6 +2,7 @@
 using Sistema.DTO;
 using Sistema.repository;
 using Sistema.modelos;
+using Microsoft.EntityFrameworkCore;
 
 namespace Sistema.controllers
 {
@@ -16,6 +17,26 @@ namespace Sistema.controllers
         {
             _context = context;
         }
+
+
+
+
+
+
+        [HttpGet("buscar-por-filtro")]
+        public async Task<IActionResult> GetTerrenosFiltrados(string empresa, string cidade)
+        {
+            var terrenos = await _context.Terrenos
+                .Where(t => t.Proprietaria == empresa && t.Cidade == cidade)
+                .Select(t => new { t.Id, t.Matricula, t.Nome })
+                .ToListAsync();
+
+            return Ok(terrenos);
+        }
+
+
+
+
 
 
 

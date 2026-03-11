@@ -6,6 +6,7 @@
         public long Matricula {  get; set; }
         public string Nome { get; set; }
         public decimal Area { get; set; }
+        public string Cidade { get; set; }
         public string Proprietaria { get; set; }
 
 

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sistema.repository;
 
@@ -10,9 +11,11 @@ using Sistema.repository;
 namespace Sistema.Migrations
 {
     [DbContext(typeof(MeuDbContext))]
-    partial class MeuDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311183901_CriaBanco")]
+    partial class CriaBanco
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -115,33 +118,6 @@ namespace Sistema.Migrations
                             Nome = "Sede Ciser",
                             Proprietaria = "Hacasa"
                         });
-                });
-
-            modelBuilder.Entity("Sistema.modelos.Relatorios", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ImagemBase64")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Matricula")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Relatorios");
                 });
 
             modelBuilder.Entity("Sistema.modelos.Usuario", b =>

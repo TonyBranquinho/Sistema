@@ -2,19 +2,17 @@
 {
     public class RelatorioDto
     {
-        public long MatriculaTerreno { get; set; }
-        public string Foto { get; set; }
-        public DateTime? Date { get; set; }
+        public long TerrenoId { get; set; }
+        public string ImagemBase64 { get; set; }
         public string Descricao { get; set; }
 
         public RelatorioDto() { }
 
-        public RelatorioDto(long matriculaTerreno, string foto, DateTime? date, string descricao)
+        public RelatorioDto(long terrenoId, string imagemBase64, string descriçao)
         {
-            MatriculaTerreno = matriculaTerreno;
-            Foto = foto;
-            Date = date;
-            Descricao = descricao;
+            TerrenoId = terrenoId;
+            ImagemBase64 = imagemBase64;
+            Descricao = descriçao;
         }
     }
 }

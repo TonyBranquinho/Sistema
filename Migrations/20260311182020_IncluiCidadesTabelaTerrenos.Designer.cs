@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sistema.repository;
 
@@ -10,9 +11,11 @@ using Sistema.repository;
 namespace Sistema.Migrations
 {
     [DbContext(typeof(MeuDbContext))]
-    partial class MeuDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311182020_IncluiCidadesTabelaTerrenos")]
+    partial class IncluiCidadesTabelaTerrenos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -57,7 +60,7 @@ namespace Sistema.Migrations
                             Id = 1L,
                             Area = 5000m,
                             Cidade = "Joinville",
-                            Matricula = 767375L,
+                            Matricula = 7L,
                             Nome = "Casa do Baixo Quiriri",
                             Proprietaria = "Hacasa"
                         },
@@ -66,7 +69,7 @@ namespace Sistema.Migrations
                             Id = 2L,
                             Area = 10000m,
                             Cidade = "Campo alegre",
-                            Matricula = 6537523L,
+                            Matricula = 6L,
                             Nome = "Casa do Alto Quiriri",
                             Proprietaria = "Ciser"
                         },
@@ -75,7 +78,7 @@ namespace Sistema.Migrations
                             Id = 3L,
                             Area = 1000m,
                             Cidade = "Sao Francisco do Sul",
-                            Matricula = 59375237L,
+                            Matricula = 5L,
                             Nome = "Terreno Loteamento Espinheiro",
                             Proprietaria = "Hacasa"
                         },
@@ -84,7 +87,7 @@ namespace Sistema.Migrations
                             Id = 4L,
                             Area = 5000m,
                             Cidade = "Joinville",
-                            Matricula = 837539L,
+                            Matricula = 8L,
                             Nome = "Terreno Loteamento Boa Vista",
                             Proprietaria = "Ciser"
                         },
@@ -93,7 +96,7 @@ namespace Sistema.Migrations
                             Id = 5L,
                             Area = 100m,
                             Cidade = "Sao Francisco do Sul",
-                            Matricula = 31398375L,
+                            Matricula = 3L,
                             Nome = "Terreno Loteamento America",
                             Proprietaria = "Ciser"
                         },
@@ -102,7 +105,7 @@ namespace Sistema.Migrations
                             Id = 6L,
                             Area = 50000m,
                             Cidade = "Campo alegre",
-                            Matricula = 2697867L,
+                            Matricula = 2L,
                             Nome = "Chacara Campo Alegre",
                             Proprietaria = "Parana"
                         },
@@ -111,37 +114,10 @@ namespace Sistema.Migrations
                             Id = 7L,
                             Area = 8000m,
                             Cidade = "Joinville",
-                            Matricula = 1785L,
+                            Matricula = 1L,
                             Nome = "Sede Ciser",
                             Proprietaria = "Hacasa"
                         });
-                });
-
-            modelBuilder.Entity("Sistema.modelos.Relatorios", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ImagemBase64")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Matricula")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Relatorios");
                 });
 
             modelBuilder.Entity("Sistema.modelos.Usuario", b =>
