@@ -3,6 +3,7 @@ using Sistema.DTO;
 using Sistema.repository;
 using Sistema.modelos;
 using Microsoft.EntityFrameworkCore;
+using Sistema.Modelos;
 
 namespace Sistema.controllers
 {
@@ -38,13 +39,56 @@ namespace Sistema.controllers
 
 
 
+        [HttpGet("listar-cidades")]
+        public async Task<IActionResult> GetCidades()
+        {
+            var cidades = await _context.Terrenos
+                .Select(t => t.Cidade)
+                .Distinct()
+                .ToListAsync();
+            return Ok(cidades);
+        }
+
+        [HttpGet("listar-empresas")]
+        public async Task<IActionResult> GetEmpresas()
+        {
+            var empresas = await _context.Terrenos
+                .Select(t => t.Proprietaria)
+                .Distinct()
+                .ToListAsync();
+            return Ok(empresas);
+        }
+
+
+
+
 
 
         [HttpPost("relatorio")]
         public async Task<IActionResult> Relatorio([FromBody] RelatorioDto dados)
         {
-            // Lógica para salvar no banco ou gerar PDF entrará aqui
-            return Ok(new { sucesso = true, mensagem = "Relatório recebido com sucesso!" });
-        }
+            try
+            {
+                
+                var novoRelatorio = new Relatorios
+                {
+                    Descricao = dados.Descricao,
+                    TerrenoId = dados.TerrenoId,
+                    ImagemBase64 = dados.ImagemBase64
+                };
+
+
+                _context.Relatorios.Add(novoRelatorio);
+                await _context.SaveChangesAsync();
+
+
+                // Lógica para salvar no banco ou gerar PDF entrará aqui
+                return Ok(new { sucesso = true, mensagem = "Relatório recebido com sucesso!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { sucesso = false, mensagem = "Erro ao salvar: " + ex.Message });
+            }
+        }    
     }
 }
