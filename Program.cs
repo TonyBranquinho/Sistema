@@ -1,10 +1,11 @@
 using Sistema.repository;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+QuestPDF.Settings.License = LicenseType.Community;
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -56,6 +57,8 @@ app.UseCors("PermitirTudo");
 
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles(); // Isso permite que o servidor entregue arquivos da pasta wwwroot
 
 app.UseAuthorization();
 
