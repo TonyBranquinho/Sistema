@@ -68,13 +68,20 @@ namespace Sistema.controllers
         public async Task<IActionResult> Relatorio([FromBody] RelatorioDto dados)
         {
             try
-            {
-                
+            {   
+                // Validação básica: O terreno existe?
+                var terrenoExiste = await _context.Terrenos.AnyAsync(t => t.Id == dados.TerrenoId);
+                if (!terrenoExiste)
+                {
+                    return BadRequest(new { sucesso = false, mensagem = "Terreno não encontrado." });
+                }
+
                 var novoRelatorio = new Relatorios
                 {
                     Descricao = dados.Descricao,
                     TerrenoId = dados.TerrenoId,
-                    ImagemBase64 = dados.ImagemBase64
+                    ImagemBase64 = dados.ImagemBase64,
+                    UsuarioId = 1
                 };
 
 

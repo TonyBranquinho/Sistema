@@ -11,19 +11,14 @@ namespace Sistema.modelos
         public string ImagemBase64 { get; set; }
 
 
-        [NotMapped]
-        public int Matricula { get; set; }
-        
-
         public Relatorios()
         {
         }
 
-        public Relatorios(int id, int usuarioId, int matricula, string descricao, string imagemBase64, long terrenoId)
+        public Relatorios(int id, int usuarioId, string descricao, string imagemBase64, long terrenoId)
         {
             Id = id;
             UsuarioId = usuarioId;
-            Matricula = matricula;
             Descricao = descricao;
             ImagemBase64 = imagemBase64;
             TerrenoId = terrenoId;
