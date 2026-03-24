@@ -1,4 +1,4 @@
-﻿namespace Sistema.modelos
+﻿namespace Sistema.Modelos
 {
     public class Usuario
     {

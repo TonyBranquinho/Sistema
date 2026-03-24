@@ -1,4 +1,4 @@
-﻿using Sistema.modelos;
+﻿using Sistema.Modelos;
 
 namespace Sistema.DTO
 {

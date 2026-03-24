@@ -1,8 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Sistema.modelos;
 using Sistema.Modelos;
 
-namespace Sistema.repository
+namespace Sistema.Repository
 
 {
     public class MeuDbContext : DbContext
@@ -11,10 +10,16 @@ namespace Sistema.repository
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<Terrenos> Terrenos { get; set; }
         public DbSet<Relatorios> Relatorios { get; set; }
+        public DbSet<Foto> Foto { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Foto>()
+            .HasOne(f => f.Relatorios)
+            .WithMany(r => r.Fotos)
+            .HasForeignKey(f => f.RelatorioId);
 
             modelBuilder.Entity<Terrenos>().HasData(
                 new Terrenos { Id = 1, Nome = "Casa do Baixo Quiriri", Area = 5000, Matricula = 767375, Proprietaria = "Hacasa", Cidade = "Joinville" },

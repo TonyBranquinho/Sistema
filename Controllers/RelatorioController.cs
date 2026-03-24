@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sistema.DTO;
-using Sistema.repository;
-using Sistema.modelos;
-using Microsoft.EntityFrameworkCore;
+using Sistema.Repository;
 using Sistema.Modelos;
+using Microsoft.EntityFrameworkCore;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
@@ -76,137 +75,118 @@ namespace Sistema.controllers
                
                 if (!terrenoExiste)
                 {
-                    return BadRequest(new { sucesso = false, mensagem = "Terreno não encontrado." });
+                    return BadRequest(new { sucesso = false, mensagem = "Terreno não encontrado, recarregue a pagina e selecione novamente." });
                 }
 
-
-
-
-                string nomeArquivo = "";
-
-                if (!string.IsNullOrEmpty(dados.ImagemBase64))
+                if (string.IsNullOrEmpty(dados.ImagemBase64))
                 {
-                    // A string Base64 do navegador vem com um cabeçalho (ex: "data:image/jpeg;base64,...")
-                    // Esta linha localiza a vírgula e pega apenas o que vem depois dela, que é o código da imagem real
-                    var base64Data = dados.ImagemBase64.Substring(dados.ImagemBase64.IndexOf(",") + 1);
-
-                    // Converte a string de texto Base64 em um array de bytes (dados binários que formam o arquivo)
-                    byte[] imageBytes = Convert.FromBase64String(base64Data);
-
-                    // Directory.GetCurrentDirectory() pega a pasta raiz do projeto
-                    // Path.Combine junta os nomes de pastas garantindo que as barras ( \ ou / ) fiquem corretas conforme o sistema operacional
-                    var pastaFotos = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "fotos");
-
-                    // Verifica se a pasta "wwwroot/fotos" existe no servidor; se não existir, o sistema a cria automaticamente
-                    if (!Directory.Exists(pastaFotos)) Directory.CreateDirectory(pastaFotos);
-
-                    // Guid.NewGuid() gera um código aleatório único (ex: a1b2-c3d4...). 
-                    // Isso evita que, se dois usuários mandarem fotos com o mesmo nome original, uma apague a outra.
-                    nomeArquivo = $"foto_{Guid.NewGuid()}.jpg";
-
-                    // Cria o caminho final: a pasta onde salvar + o nome único do arquivo
-                    var caminhoCompleto = Path.Combine(pastaFotos, nomeArquivo);
-
-                    // Grava os bytes convertidos no disco rígido do servidor criando o arquivo .jpg
-                    await System.IO.File.WriteAllBytesAsync(caminhoCompleto, imageBytes);
+                    return BadRequest(new { sucesso = false, mensagem = "É necessário incluir pelo menos uma foto." });
                 }
 
 
 
+                var usuarioIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
+                if (string.IsNullOrEmpty(usuarioIdString))
+                {
+                    return Unauthorized(new { sucesso = false, mensagem = "Usuário não identificado." });
+                }
+
+
+
+                // Cria o relatório
                 var novoRelatorio = new Relatorios
                 {
                     Descricao = dados.Descricao,
                     TerrenoId = dados.TerrenoId,
-                    ImagemBase64 = dados.ImagemBase64,
-                    UsuarioId = 1
+                    UsuarioId = int.Parse(usuarioIdString), // Aqui entra o ID dinâmico
+                    DataCriacao = DateTime.Now,
+                    Fotos = new List<Foto>() // Inicializa a lista vazia
                 };
 
 
+                
+                // A string Base64 do navegador vem com um cabeçalho (ex: "data:image/jpeg;base64,...")
+                // Esta linha localiza a vírgula e pega apenas o que vem depois dela, que é o código da imagem real
+                var base64Data = dados.ImagemBase64.Substring(dados.ImagemBase64.IndexOf(",") + 1);
+
+                // Converte a string de texto Base64 em um array de bytes (dados binários que formam o arquivo)
+                byte[] imageBytes = Convert.FromBase64String(base64Data);
+
+                // Directory.GetCurrentDirectory() pega a pasta raiz do projeto
+                // Path.Combine junta os nomes de pastas garantindo que as barras ( \ ou / ) fiquem corretas conforme o sistema operacional
+                var pastaFotos = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "fotos");
+
+                // Verifica se a pasta "wwwroot/fotos" existe no servidor; se não existir, o sistema a cria automaticamente
+                if (!Directory.Exists(pastaFotos)) Directory.CreateDirectory(pastaFotos);
+
+                // Guid.NewGuid() gera um código aleatório único (ex: a1b2-c3d4...). 
+                // Isso evita que, se dois usuários mandarem fotos com o mesmo nome original, uma apague a outra.
+                var nomeArquivo = $"foto_{Guid.NewGuid()}.jpg";
+
+                // Cria o caminho final: a pasta onde salvar + o nome único do arquivo
+                var caminhoCompleto = Path.Combine(pastaFotos, nomeArquivo);
+
+                // Grava os bytes convertidos no disco rígido do servidor criando o arquivo .jpg
+                await System.IO.File.WriteAllBytesAsync(caminhoCompleto, imageBytes);
+
+
+                    
+
+                // Cria o objeto foto com o nome do arquivo que foi para o wwwroot
+                var novaFoto = new Foto
+                {
+                    NomeArquivo = nomeArquivo,
+                    DataCriacao = DateTime.Now,
+                    Localizacao = 0
+                };
+
+                novoRelatorio.Fotos.Add(novaFoto);
+
+                // Salva tudo no banco
                 _context.Relatorios.Add(novoRelatorio);
                 await _context.SaveChangesAsync();
 
-
-                // Lógica para salvar no banco ou gerar PDF entrará aqui
+                
                 return Ok(new { sucesso = true, mensagem = "Relatório recebido com sucesso!" });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { sucesso = false, mensagem = "Erro ao salvar: " + ex.Message });
+                return BadRequest(new { sucesso = false, mensagem = "Erro inesperado ao salvar, recarregue a pagina e tente novamente." + ex.Message });
             }
         }
 
 
 
-
-        /*
-
-        [HttpGet("gerar-pdf/{id}")]
-        public async Task<IActionResult> GerarPdf(int id)
+        [HttpGet("listar-todos")]
+        public async Task<IActionResult> ListarTodos()
         {
-            // 1. Busca o relatório
-            var relatorio = await _context.Relatorios.FindAsync(id);
-            if (relatorio == null)
-                return NotFound(new { mensagem = "Relatório não encontrado." });
-
-            // 2. Busca os dados do terreno correspondente
-            var terreno = await _context.Terrenos.FindAsync(relatorio.TerrenoId);
-
-            // 3. Desenha a estrutura do PDF
-            var documento = Document.Create(container =>
+            try
             {
-                container.Page(page =>
-                {
-                    page.Size(PageSizes.A4);
-                    page.Margin(2, Unit.Centimetre);
-                    page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(12));
-
-                    // Cabeçalho
-                    page.Header()
-                        .Text($"Relatório: {terreno.Nome}")
-                        .SemiBold().FontSize(20).FontColor(Colors.Blue.Darken2);
-
-                    // Conteúdo
-                    page.Content().PaddingVertical(1, Unit.Centimetre).Column(col =>
+                var relatorios = await _context.Relatorios
+                    .Include(r => r.Terreno)
+                    .Include(r => r.Usuario)
+                    .Include(r => r.Fotos)
+                    .Select(r => new RelatorioGestorDTO
                     {
-                        col.Item().Text($"Matrícula: {terreno.Matricula}");
-                        col.Item().Text($"Cidade: {terreno.Cidade}");
-                        col.Item().Text($"Empresa: {terreno.Proprietaria}");
-                        col.Item().Text($"Área: {terreno.Area} m²");
+                        Id = r.Id,
+                        NomeFuncionario = r.Usuario.Nome,
+                        NomePropriedade = r.Terreno.Nome,
+                        Descricao = r.Descricao,
+                        DataCriacao = r.DataCriacao,
 
-                        col.Item().PaddingTop(15).Text("Descrição do Relatório:").SemiBold();
-                        col.Item().Text(relatorio.Descricao);
+                        // Transforma a lista de objetos "Foto" em uma lista de strings (nomes dos arquivos)
+                        Fotos = r.Fotos.Select(f => f.NomeArquivo).ToList()
+                    })
+                    .OrderByDescending(r => r.DataCriacao)
+                    .ToListAsync();
 
-                        // 4. Lógica para anexar a foto, se existir
-                        if (!string.IsNullOrEmpty(relatorio.ImagemBase64))
-                        {
-                            // Usa o mesmo caminho físico que você configurou no POST
-                            var caminhoImagem = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "fotos", relatorio.ImagemBase64);
-
-                            if (System.IO.File.Exists(caminhoImagem))
-                            {
-                                col.Item().PaddingTop(20).Image(caminhoImagem);
-                            }
-                        }
-                    });
-
-                    // Rodapé com paginação
-                    page.Footer()
-                        .AlignCenter()
-                        .Text(x =>
-                        {
-                            x.Span("Página ");
-                            x.CurrentPageNumber();
-                            x.Span(" de ");
-                            x.TotalPages();
-                        });
-                });
-            });
-
-            // 5. Gera os bytes do PDF e retorna como download
-            byte[] pdfBytes = documento.GeneratePdf();
-            return File(pdfBytes, "application/pdf", $"Relatorio_Matricula_{terreno.Matricula}.pdf");    
-        }   */
+                return Ok(relatorios);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { mensagem = "Erro ao buscar relatórios", detalhe = ex.Message });
+            }        
+        }
     }
 }

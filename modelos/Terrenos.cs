@@ -2,8 +2,8 @@
 {
     public class Terrenos
     {
-        public long Id {  get; set; }
-        public long Matricula {  get; set; }
+        public int Id {  get; set; }
+        public int Matricula {  get; set; }
         public string Nome { get; set; }
         public decimal Area { get; set; }
         public string Cidade { get; set; }
@@ -14,7 +14,7 @@
         {
         }
 
-        public Terrenos(long id, long matricula, string nome, decimal area, string proprietaria)
+        public Terrenos(int id, int matricula, string nome, decimal area, string proprietaria)
         {
             Id = id;
             Matricula = matricula;
