@@ -5,6 +5,7 @@ using Sistema.Repository;
 using Sistema.Modelos;
 using System.Text;
 using Microsoft.AspNetCore.Identity.Data;
+using Sistema.Service;
 
 namespace Sistema.Controllers
 {
@@ -14,11 +15,17 @@ namespace Sistema.Controllers
     public class LoginController : ControllerBase
     {
         private readonly MeuDbContext _context; // O "substituto" do ADO.NET (EF Core)
+        private readonly PasswordService _passwordService;
+        private readonly TokenService _tokenService;
 
-        public LoginController(MeuDbContext context)
+
+        public LoginController(MeuDbContext context, PasswordService passwordService, TokenService tokenService)
         {
-            _context = context;            
+            _context = context;
+            _passwordService = passwordService;
+            _tokenService = tokenService;
         }
+
 
 
 
@@ -26,67 +33,79 @@ namespace Sistema.Controllers
         public async Task<IActionResult> Login([FromBody] LoginDto dados)
         {
             // 1. Busca o usuário
-            var usuarioEncontrado = await _context.Usuarios
+            var usuario = await _context.Usuarios
                 .FirstOrDefaultAsync(u => u.Nome == dados.Usuario);
 
-            if (usuarioEncontrado == null)
+
+            // NUNCA retorne "usuário não encontrado" separado de "senha incorreta".
+            // Isso permite que um atacante enumere quais usuários existem no sistema
+            // (user enumeration). A mensagem deve ser sempre a mesma nos dois casos.
+
+            // Mesmo se o usuário não existe, roda o Verify com valores falsos.
+            // Isso garante que o tempo de resposta seja igual nos dois casos,
+            // impedindo que alguém descubra usuários válidos pelo tempo da resposta.
+            bool senhaValida;
+
+
+            if (usuario == null)
             {
-                return Unauthorized(new { sucesso = false, mensagem = "Usuário não encontrado" });
+                _passwordService.Verificar(dados.Senha, "fake.fake");
+                senhaValida = false;
+            }
+            else
+            {
+                senhaValida = _passwordService.Verificar(dados.Senha, usuario.SenhaHash);
             }
 
-            // verificaçao do status do usuario
-            if (!usuarioEncontrado.Ativo)
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new { sucesso = false, mensagem = "Usuário inativo no sistema" });
-            }
 
 
-            // 2. VALIDAÇÃO TEMPORÁRIA (SEM ARGON2).
-            bool senhaEhValida = (dados.Senha == usuarioEncontrado.SenhaHash);
+            if (!senhaValida || usuario == null)
+                return Unauthorized(new { sucesso = false, mensagem = "Credenciais inválidas" });
 
-            if (!senhaEhValida)
-            {
-                return Unauthorized(new { sucesso = false, mensagem = "Senha incorreta" });
-            }
+            if (!usuario.Ativo)
+                return StatusCode(403, new { sucesso = false, mensagem = "Usuário inativo" });
+
+            var token = _tokenService.Gerar(usuario);
 
 
-            /// 3. RETORNO SEM TOKEN
-            // Enviamos um token "falso" ou vazio apenas para não quebrar o seu Frontend (JavaScript)
+
             return Ok(new
             {
                 sucesso = true,
-                token = "TOKEN_DESATIVADO",
-                usuarioNome = usuarioEncontrado.Nome,
-                usuarioId = usuarioEncontrado.Id // Enviando o ID para o front saber quem é
+                token = token,
+                usuarioNome = usuario.Nome,
+                usuarioId = usuario.Id
             });
         }
 
 
 
 
+
+
         [HttpPost("registrar")]
-        // Metodo que recebe dados CadastroDto e entrega Task<IActionResult>
         public async Task<IActionResult> Registrar([FromBody] CadastroDto dados)
         {
-            // Cria o objeto do usuário
+            var jaExiste = await _context.Usuarios.AnyAsync(u => u.Email == dados.Email);
+            if (jaExiste)
+                return Conflict(new { mensagem = "E-mail já cadastrado" });
+
+            // Hashear retorna (hash, salt) — ambos byte[]
+            var senhaHash = _passwordService.Hashear(dados.Senha);
+
             var novoUsuario = new Usuario
             {
                 Nome = dados.Nome,
                 Email = dados.Email,
-                SenhaHash = dados.Senha, // Salva a senha pura
+                SenhaHash = senhaHash,
                 Ativo = true
             };
 
-
-            // Salva no MySQL
             _context.Usuarios.Add(novoUsuario);
             await _context.SaveChangesAsync();
 
             return Ok(new { mensagem = "Usuário criado com sucesso!" });
         }
-
-
-
 
         [HttpPost("recuperar")]
         public async Task<IActionResult> Recuperar([FromBody] RecuperarDto dados)

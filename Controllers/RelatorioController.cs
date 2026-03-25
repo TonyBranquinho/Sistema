@@ -5,12 +5,14 @@ using Sistema.Modelos;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Sistema.controllers
 {
     [ApiController]
     [Route("api/[controller]")]
 
+    [Authorize]
     public class RelatorioController : ControllerBase
     {        
         private readonly MeuDbContext _context; // O "substituto" do ADO.NET (EF Core)

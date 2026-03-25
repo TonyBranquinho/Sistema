@@ -1,17 +1,18 @@
 using Sistema.Repository;
 using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql;
 using QuestPDF.Infrastructure;
-
-
-using System.Text;
 using Sistema.Service;
+using Sistema.Middleware;
+using Microsoft.AspNetCore.Authentication;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 
 // 1. Configurações Globais
 QuestPDF.Settings.License = LicenseType.Community;
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -26,7 +27,19 @@ builder.Services.AddDbContext<MeuDbContext>(options =>
 
 
 
-// 3. 
+// Registra os serviços como Singleton — uma instância por toda a vida da aplicação.
+// PasswordService e TokenService não têm estado mutável, então Singleton é seguro
+// e mais eficiente que Scoped (que criaria uma nova instância por request).
+builder.Services.AddSingleton<PasswordService>();
+builder.Services.AddSingleton<TokenService>();
+
+
+
+builder.Services.AddAuthentication("jwt")
+    .AddScheme<AuthenticationSchemeOptions, JwtAuthHandler>("jwt", null);
+
+builder.Services.AddAuthorization();
+
 
 
 
@@ -62,7 +75,12 @@ app.UseStaticFiles(); // Isso permite que o servidor entregue arquivos da pasta 
 app.UseCors("PermitirTudo");
 
 
-
+// ORDEM IMPORTA:
+// O middleware JWT precisa rodar ANTES de UseAuthorization,
+// porque ele é quem popula context.User.
+// Se invertido, UseAuthorization vê um usuário anônimo e nega tudo.
+app.UseMiddleware<JwtMiddleware>();
+app.UseAuthentication();
 app.UseAuthorization();  // 2º Autoriza (O que você pode fazer?)
 
 
