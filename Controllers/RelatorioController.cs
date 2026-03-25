@@ -64,12 +64,16 @@ namespace Sistema.controllers
 
 
 
-
         [HttpPost("relatorio")]
         public async Task<IActionResult> Relatorio([FromBody] RelatorioDto dados)
         {
+            Console.WriteLine("Requisição de relatório recebida!");
             try
-            {   
+            {
+                int usuarioId = 1;
+
+
+
                 // Validação básica: O terreno existe?
                 var terrenoExiste = await _context.Terrenos.AnyAsync(t => t.Id == dados.TerrenoId);
                
@@ -85,13 +89,6 @@ namespace Sistema.controllers
 
 
 
-                var usuarioIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-                if (string.IsNullOrEmpty(usuarioIdString))
-                {
-                    return Unauthorized(new { sucesso = false, mensagem = "Usuário não identificado." });
-                }
-
 
 
                 // Cria o relatório
@@ -99,7 +96,7 @@ namespace Sistema.controllers
                 {
                     Descricao = dados.Descricao,
                     TerrenoId = dados.TerrenoId,
-                    UsuarioId = int.Parse(usuarioIdString), // Aqui entra o ID dinâmico
+                    UsuarioId = usuarioId,
                     DataCriacao = DateTime.Now,
                     Fotos = new List<Foto>() // Inicializa a lista vazia
                 };

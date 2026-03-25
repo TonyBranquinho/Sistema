@@ -2,8 +2,8 @@ using Sistema.Repository;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql;
 using QuestPDF.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+
+
 using System.Text;
 using Sistema.Service;
 
@@ -15,7 +15,7 @@ QuestPDF.Settings.License = LicenseType.Community;
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<Sistema.Service.TokenService>(); 
+ 
 
 
 
@@ -26,34 +26,7 @@ builder.Services.AddDbContext<MeuDbContext>(options =>
 
 
 
-// 3. Configuração do JWT
-var secretKey = builder.Configuration["JwtSettings:Secret"];
-var key = Encoding.ASCII.GetBytes(secretKey);
-
-builder.Services.AddAuthentication(x =>
-{
-    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(x =>
-{
-    x.RequireHttpsMetadata = false; // Mudar para true em produção
-    x.SaveToken = true;
-    x.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        
-        ValidateIssuer = true,
-        ValidIssuer = "MeuSistemaAPI",
-
-        ValidateAudience = true,
-        ValidAudience = "UsuariosApp",
-
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
-});
+// 3. 
 
 
 
@@ -89,7 +62,7 @@ app.UseStaticFiles(); // Isso permite que o servidor entregue arquivos da pasta 
 app.UseCors("PermitirTudo");
 
 
-app.UseAuthentication(); // 1º Autentica (Quem é você?)
+
 app.UseAuthorization();  // 2º Autoriza (O que você pode fazer?)
 
 

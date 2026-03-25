@@ -2,10 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Sistema.DTO;
 using Sistema.Repository;
-using Sistema.Service;
 using Sistema.Modelos;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Identity.Data;
 
@@ -17,12 +14,10 @@ namespace Sistema.Controllers
     public class LoginController : ControllerBase
     {
         private readonly MeuDbContext _context; // O "substituto" do ADO.NET (EF Core)
-        private readonly TokenService _tokenService;
 
-        public LoginController(MeuDbContext context, TokenService tokenService)
+        public LoginController(MeuDbContext context)
         {
-            _context = context;
-            _tokenService = tokenService;
+            _context = context;            
         }
 
 
@@ -30,8 +25,7 @@ namespace Sistema.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dados)
         {
-            // 1. Busca o usuário no banco pelo Nome (ajuste para Email se preferir)
-            // Usamos 'usuarioEncontrado' para não confundir com o nome da classe 'Usuario'
+            // 1. Busca o usuário
             var usuarioEncontrado = await _context.Usuarios
                 .FirstOrDefaultAsync(u => u.Nome == dados.Usuario);
 
@@ -40,30 +34,30 @@ namespace Sistema.Controllers
                 return Unauthorized(new { sucesso = false, mensagem = "Usuário não encontrado" });
             }
 
-            // VERIFICAÇÃO DE STATUS DO USUARIO
+            // verificaçao do status do usuario
             if (!usuarioEncontrado.Ativo)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new { sucesso = false, mensagem = "Usuário inativo no sistema" });
             }
 
-            // 2. Validação Real: Compara a senha digitada com o Hash do Banco (Argon2)
-            bool senhaEhValida = VerificadorArgon2.Validar(dados.Senha, usuarioEncontrado.SenhaHash);
+
+            // 2. VALIDAÇÃO TEMPORÁRIA (SEM ARGON2).
+            bool senhaEhValida = (dados.Senha == usuarioEncontrado.SenhaHash);
 
             if (!senhaEhValida)
             {
                 return Unauthorized(new { sucesso = false, mensagem = "Senha incorreta" });
             }
 
-            // 3. Geração do Crachá (Token JWT)
-            // Passamos o objeto completo do usuário para o serviço extrair ID, Nome e Perfil
-            var token = _tokenService.GerarToken(usuarioEncontrado);
 
-            // 4. Retorno para o Cliente (Frontend)
+            /// 3. RETORNO SEM TOKEN
+            // Enviamos um token "falso" ou vazio apenas para não quebrar o seu Frontend (JavaScript)
             return Ok(new
             {
                 sucesso = true,
-                token = token,
-                usuarioNome = usuarioEncontrado.Nome
+                token = "TOKEN_DESATIVADO",
+                usuarioNome = usuarioEncontrado.Nome,
+                usuarioId = usuarioEncontrado.Id // Enviando o ID para o front saber quem é
             });
         }
 
@@ -74,19 +68,17 @@ namespace Sistema.Controllers
         // Metodo que recebe dados CadastroDto e entrega Task<IActionResult>
         public async Task<IActionResult> Registrar([FromBody] CadastroDto dados)
         {
-            // 1. Gera o hash da senha usando Argon2
-            var hash = VerificadorArgon2.GerarHash(dados.Senha);
-
-            // 2. Cria o objeto do usuário
+            // Cria o objeto do usuário
             var novoUsuario = new Usuario
             {
                 Nome = dados.Nome,
                 Email = dados.Email,
-                SenhaHash = hash,
+                SenhaHash = dados.Senha, // Salva a senha pura
                 Ativo = true
             };
 
-            // 3. Salva no MySQL
+
+            // Salva no MySQL
             _context.Usuarios.Add(novoUsuario);
             await _context.SaveChangesAsync();
 
@@ -97,22 +89,9 @@ namespace Sistema.Controllers
 
 
         [HttpPost("recuperar")]
-        // Metodo que recebe dados RecuperarDto e entega Task<IActionResult>
         public async Task<IActionResult> Recuperar([FromBody] RecuperarDto dados)
         {
-            // 1. Procurar o usuário no banco pelo e-mail
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == dados.Email);
-
-            // 2. Segurança: Mesmo que o e-mail não exista, o mercado recomenda 
-            // responder "Sucesso" para evitar que hackers descubram quais e-mails estão cadastrados.
-            if (usuario == null)
-            {
-                return Ok(new { mensagem = "Se o e-mail existir, um link de recuperação foi enviado." });
-            }
-
-            // 3. Lógica de envio (Aqui entraria o código para enviar um e-mail real)
-            // Por enquanto, apenas simulamos.
-            return Ok(new { mensagem = "Se o e-mail existir, um link de recuperação foi enviado." });
+            return Ok(new { mensagem = "Simulação: Link enviado." });
         }
     }
 }
