@@ -18,6 +18,9 @@ namespace Sistema.Service
             _expiryMinutes = int.Parse(config["Jwt:ExpiryMinutes"]!);
         }
 
+
+
+
         public string Gerar(Modelos.Usuario usuario)
         {
             // JWT tem 3 partes: header.payload.assinatura
@@ -43,6 +46,9 @@ namespace Sistema.Service
 
             return $"{header}.{payload}.{assinatura}";
         }
+
+
+
 
         public ClaimsPrincipal? Validar(string token)
         {

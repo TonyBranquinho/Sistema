@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Sistema.controllers
 {
@@ -72,8 +73,7 @@ namespace Sistema.controllers
             Console.WriteLine("Requisição de relatório recebida!");
             try
             {
-                int usuarioId = 1;
-
+                
 
 
                 // Validação básica: O terreno existe?
@@ -91,6 +91,8 @@ namespace Sistema.controllers
 
 
 
+                var claimValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                int usuarioId = int.Parse(claimValue);
 
 
                 // Cria o relatório
