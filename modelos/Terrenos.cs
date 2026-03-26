@@ -9,6 +9,8 @@
         public string Cidade { get; set; }
         public string Proprietaria { get; set; }
 
+        public List<Relatorios> Relatorios { get; set; }
+
 
         public Terrenos()
         {

@@ -25,6 +25,30 @@ namespace Sistema.controllers
 
 
 
+        [HttpGet("listar-cidades")]
+        public async Task<IActionResult> GetCidades()
+        {
+            var cidades = await _context.Terrenos
+                .Select(t => t.Cidade)
+                .Distinct()
+                .ToListAsync();
+            return Ok(cidades);
+        }
+
+
+
+        [HttpGet("listar-empresas")] // define que esse método responde a requisições GET na rota "listar-empresas"
+        public async Task<IActionResult> GetEmpresas(string cidade) // recebe o nome da cidade como parâmetro da URL
+        {
+            var empresas = await _context.Terrenos // acessa a tabela Terrenos no banco
+                .Where(t => t.Cidade == cidade) // filtra apenas os terrenos que pertencem à cidade recebida
+                .Select(t => t.Proprietaria) // de cada terreno filtrado, pega apenas o campo Proprietaria
+                .Distinct() // remove empresas duplicadas — se a empresa tem 3 terrenos na cidade, aparece só uma vez
+                .ToListAsync(); // executa a query no banco e retorna como lista
+
+            return Ok(empresas); // retorna a lista de empresas com status 200
+        }
+
 
 
 
@@ -39,29 +63,9 @@ namespace Sistema.controllers
             return Ok(terrenos);
         }
 
+                
 
-
-
-
-        [HttpGet("listar-cidades")]
-        public async Task<IActionResult> GetCidades()
-        {
-            var cidades = await _context.Terrenos
-                .Select(t => t.Cidade)
-                .Distinct()
-                .ToListAsync();
-            return Ok(cidades);
-        }
-
-        [HttpGet("listar-empresas")]
-        public async Task<IActionResult> GetEmpresas()
-        {
-            var empresas = await _context.Terrenos
-                .Select(t => t.Proprietaria)
-                .Distinct()
-                .ToListAsync();
-            return Ok(empresas);
-        }
+        
 
 
 
