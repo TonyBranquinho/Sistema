@@ -7,6 +7,8 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using MetadataExtractor.Formats.Exif;
+using MetadataExtractor;
 
 namespace Sistema.controllers
 {
@@ -120,10 +122,10 @@ namespace Sistema.controllers
 
                 // Directory.GetCurrentDirectory() pega a pasta raiz do projeto
                 // Path.Combine junta os nomes de pastas garantindo que as barras ( \ ou / ) fiquem corretas conforme o sistema operacional
-                var pastaFotos = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "fotos");
+                var pastaFotos = Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "fotos");
 
                 // Verifica se a pasta "wwwroot/fotos" existe no servidor; se não existir, o sistema a cria automaticamente
-                if (!Directory.Exists(pastaFotos)) Directory.CreateDirectory(pastaFotos);
+                if (System.IO.Directory.Exists(pastaFotos)) System.IO.Directory.CreateDirectory(pastaFotos);
 
                 // Guid.NewGuid() gera um código aleatório único (ex: a1b2-c3d4...). 
                 // Isso evita que, se dois usuários mandarem fotos com o mesmo nome original, uma apague a outra.
@@ -136,14 +138,53 @@ namespace Sistema.controllers
                 await System.IO.File.WriteAllBytesAsync(caminhoCompleto, imageBytes);
 
 
-                    
+                // ------------- META DADOS EXIF ----------------------------
+                var resultado = new Foto();
+
+                try
+                {
+                    // Lê todos os diretórios de metadados do arquivo transfromato em Bytes (Exif, IPTC, etc)
+                    var diretorios = ImageMetadataReader.ReadMetadata(new MemoryStream(imageBytes));
+
+                    // 1. Capturando a Data Original (Sub-IFD do Exif)
+                    var subIfdDirectory = diretorios.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+                    if (subIfdDirectory != null && subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out var data))
+                    {
+                        resultado.DataFoto = data;
+                    }
+
+                    // 2. Capturando Coordenadas GPS
+                    var gpsDirectory = diretorios.OfType<GpsDirectory>().FirstOrDefault();
+                    if (gpsDirectory != null)
+                    {
+                        var lat = gpsDirectory.GetRationalArray(GpsDirectory.TagLatitude);
+                        var lon = gpsDirectory.GetRationalArray(GpsDirectory.TagLongitude);
+                        var latRef = gpsDirectory.GetString(GpsDirectory.TagLatitudeRef);
+                        var lonRef = gpsDirectory.GetString(GpsDirectory.TagLongitudeRef);
+
+                        if (lat != null && lon != null)
+                        {
+                            resultado.Latitude = (decimal)(lat[0].ToDouble() + lat[1].ToDouble() / 60 + lat[2].ToDouble() / 3600) * (latRef == "S" ? -1 : 1);
+                            resultado.Longitude = (decimal)(lon[0].ToDouble() + lon[1].ToDouble() / 60 + lon[2].ToDouble() / 3600) * (lonRef == "W" ? -1 : 1);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Em um sistema real, logar o erro: "Arquivo não contém metadados ou está corrompido"
+                    Console.WriteLine($"Erro ao ler metadados: {ex.Message}");
+                }
+
+                // ----------------------------------------------------------
+
 
                 // Cria o objeto foto com o nome do arquivo que foi para o wwwroot
                 var novaFoto = new Foto
                 {
                     NomeArquivo = nomeArquivo,
-                    DataCriacao = DateTime.Now,
-                    Localizacao = 0
+                    DataFoto = resultado.DataFoto,
+                    Latitude = resultado.Latitude,
+                    Longitude = resultado.Longitude
                 };
 
                 novoRelatorio.Fotos.Add(novaFoto);

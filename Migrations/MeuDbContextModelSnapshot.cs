@@ -30,10 +30,13 @@ namespace Sistema.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("DataCriacao")
+                    b.Property<DateTime?>("DataFoto")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<decimal>("Localizacao")
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("decimal(65,30)");
+
+                    b.Property<decimal?>("Longitude")
                         .HasColumnType("decimal(65,30)");
 
                     b.Property<string>("NomeArquivo")
@@ -2018,7 +2021,7 @@ namespace Sistema.Migrations
             modelBuilder.Entity("Sistema.Modelos.Relatorios", b =>
                 {
                     b.HasOne("Sistema.Modelos.Terrenos", "Terreno")
-                        .WithMany()
+                        .WithMany("Relatorios")
                         .HasForeignKey("TerrenoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2037,6 +2040,11 @@ namespace Sistema.Migrations
             modelBuilder.Entity("Sistema.Modelos.Relatorios", b =>
                 {
                     b.Navigation("Fotos");
+                });
+
+            modelBuilder.Entity("Sistema.Modelos.Terrenos", b =>
+                {
+                    b.Navigation("Relatorios");
                 });
 #pragma warning restore 612, 618
         }
