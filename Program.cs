@@ -4,6 +4,7 @@ using QuestPDF.Infrastructure;
 using Sistema.Service;
 using Sistema.Middleware;
 using Microsoft.AspNetCore.Authentication;
+using System.Text.Json.Serialization; // Necessário para o JsonStringEnumConverter
 
 
 
@@ -13,7 +14,12 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Configurações Globais
 QuestPDF.Settings.License = LicenseType.Community;
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+     {
+         // Esta é a linha mágica
+         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
  

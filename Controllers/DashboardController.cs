@@ -2,11 +2,13 @@
 using Microsoft.EntityFrameworkCore;
 using Sistema.Repository;
 using Sistema.Enums;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Sistema.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    //[Authorize]
     public class DashboardController : ControllerBase
     {
         private readonly MeuDbContext _context;
@@ -61,49 +63,42 @@ namespace Sistema.Controllers
             var fimSemana = inicioSemana.AddDays(7);
             var inicioSemanaAnterior = inicioSemana.AddDays(-7);
 
-            // Busca terrenos com relatórios, usuários e fotos — tudo em uma query
-            var terrenos = await _context.Terrenos
+            // A query agora é montada e enviada para o MySQL processar
+            var resultado = await _context.Terrenos
                 .AsNoTracking()
-                .Include(t => t.Relatorios)
-                    .ThenInclude(r => r.Usuario)
-                .Include(t => t.Relatorios)
-                    .ThenInclude(r => r.Fotos)
-                .ToListAsync();
-
-            // Projeção feita em memória após os dados chegarem do banco
-            var resultado = terrenos.Select(t =>
-            {
-                var temSemanaAtual = t.Relatorios.Any(r =>
-                    r.DataCriacao >= inicioSemana && r.DataCriacao < fimSemana);
-
-                var temSemanaAnterior = t.Relatorios.Any(r =>
-                    r.DataCriacao >= inicioSemanaAnterior && r.DataCriacao < inicioSemana);
-
-                // Último relatório enviado independente da semana
-                var ultimo = t.Relatorios
-                    .OrderByDescending(r => r.DataCriacao)
-                    .FirstOrDefault();
-
-                return new
+                .Select(t => new
                 {
                     t.Id,
                     t.Nome,
                     t.Cidade,
                     t.Proprietaria,
-                    Status = temSemanaAtual
+                    // O banco de dados resolve o status
+                    Status = t.Relatorios.Any(r => r.DataCriacao >= inicioSemana && r.DataCriacao < fimSemana)
                         ? StatusRelatorio.EmDia
-                        : temSemanaAnterior
+                        : t.Relatorios.Any(r => r.DataCriacao >= inicioSemanaAnterior && r.DataCriacao < inicioSemana)
                             ? StatusRelatorio.Aguardando
                             : StatusRelatorio.SemRelatorio,
-                    UltimoRelatorio = ultimo == null ? null : new
-                    {
-                        ultimo.DataCriacao,
-                        NomeFuncionario = ultimo.Usuario?.Nome,
-                        ultimo.Descricao,
-                        Fotos = ultimo.Fotos.Select(f => f.NomeArquivo).ToList()
-                    }
-                };
-            });
+
+                    // Pega apenas o último relatório para não sobrecarregar
+                    UltimoRelatorio = t.Relatorios
+                        .OrderByDescending(r => r.DataCriacao)
+                        .Select(r => new
+                        {
+                            // Se r.DataCriacao for null (improvável no banco, mas bom prevenir), 
+                            // o JS receberá null e o seu fmtData(iso) já tratará.
+                            r.DataCriacao,
+
+                            // Usamos o operador de coalescência nula para evitar strings vazias problemáticas
+                            NomeFuncionario = r.Usuario.Nome ?? "Desconhecido",
+
+                            Descricao = r.Descricao ?? "Sem descrição disponível.",
+
+                            // Garante que Fotos seja sempre uma lista, mesmo que vazia []
+                            Fotos = r.Fotos.Select(f => f.NomeArquivo).ToList()
+                        })
+                        .FirstOrDefault() // Se não houver relatório, o objeto UltimoRelatorio será null no JSON
+                })
+                .ToListAsync();
 
             return Ok(resultado);
         }
