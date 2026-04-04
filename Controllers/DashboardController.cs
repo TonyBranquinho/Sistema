@@ -3,6 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using Sistema.Repository;
 using Sistema.Enums;
 using Microsoft.AspNetCore.Authorization;
+using System.IO.Compression;
+
+using ClosedXML.Excel;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using Sistema.Modelos;
 
 namespace Sistema.Controllers
 {
@@ -12,11 +19,13 @@ namespace Sistema.Controllers
     public class DashboardController : ControllerBase
     {
         private readonly MeuDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
 
-        public DashboardController(MeuDbContext context)
+        public DashboardController(MeuDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
 
@@ -101,6 +110,134 @@ namespace Sistema.Controllers
                 .ToListAsync();
 
             return Ok(resultado);
+        }
+
+
+
+
+        [HttpPost("gerar-pdfs-selecionados")]
+        public async Task<IActionResult> GerarPdfs([FromBody] List<int> idsSelecionados)
+        {
+            var terrenos = await _context.Terrenos
+                .Include(t => t.Relatorios)
+                .Where(t => idsSelecionados.Contains(t.Id))
+                .ToListAsync();
+
+            using (var ms = new MemoryStream())
+            {
+                using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, true))
+                {
+                    foreach (var terreno in terrenos)
+                    {
+                        var pdfBytes = GerarDocumentoQuestPDF(terreno); // Sua lógica de layout aqui
+                        var entry = archive.CreateEntry($"{terreno.Nome.Replace(" ", "_")}.pdf");
+                        using (var entryStream = entry.Open())
+                        {
+                            await entryStream.WriteAsync(pdfBytes, 0, pdfBytes.Length);
+                        }
+                    }
+                }
+                return File(ms.ToArray(), "application/zip", $"Relatorios_Selecionados_{DateTime.Now:ddMMyy}.zip");
+            }
+        }
+
+
+        [HttpGet("gerar-backup-mensal")]
+        public async Task<IActionResult> GerarBackupGeral()
+        {
+            var dados = await _context.Terrenos
+                .Include(t => t.Relatorios)
+                    .ThenInclude(r => r.Fotos)
+                .OrderBy(t => t.Nome)
+                .ToListAsync();
+
+            using (var ms = new MemoryStream())
+            {
+                using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, true))
+                {
+                    // 1. Criar a Planilha de Índice (Excel)
+                    using (var workbook = new XLWorkbook())
+                    {
+                        var worksheet = workbook.Worksheets.Add("Índice de Relatórios");
+                        worksheet.Cell(1, 1).Value = "Propriedade";
+                        worksheet.Cell(1, 2).Value = "Data";
+                        worksheet.Cell(1, 3).Value = "Descrição";
+                        worksheet.Cell(1, 4).Value = "Link Foto";
+
+                        int linha = 2;
+
+                        // O laço 'foreach (var t in dados)' deve envolver os relatórios
+                        foreach (var t in dados)
+                        { 
+                            foreach (var r in t.Relatorios)
+                            {
+                                worksheet.Cell(linha, 1).Value = t.Nome;
+                                worksheet.Cell(linha, 2).Value = r.DataCriacao;
+                                worksheet.Cell(linha, 3).Value = r.Descricao;
+
+                                // Se houver fotos, pegamos a primeira para o link principal do Excel
+                                var primeiraFoto = r.Fotos?.FirstOrDefault()?.NomeArquivo;
+                                if (!string.IsNullOrEmpty(primeiraFoto))
+                                {
+                                    worksheet.Cell(linha, 4).Value = "Ver Foto";
+                                    worksheet.Cell(linha, 4).GetHyperlink().ExternalAddress = new Uri($@"Fotos\{primeiraFoto}", UriKind.Relative);
+                                }
+
+                                // Adiciona TODAS as fotos do relatório ao ZIP
+                                if (r.Fotos != null)
+                                {
+                                    foreach (var foto in r.Fotos)
+                                    {
+                                        var caminhoFisico = Path.Combine(_env.WebRootPath, "fotos", foto.NomeArquivo);
+                                        if (System.IO.File.Exists(caminhoFisico))
+                                        {
+                                            // Adiciona o arquivo na subpasta Fotos dentro do ZIP
+                                            archive.CreateEntryFromFile(caminhoFisico, $@"Fotos/{foto.NomeArquivo}");
+                                        }
+                                    }
+                                }
+                                linha++;
+                            }                            
+                        }
+
+                        // Salva o Excel dentro do ZIP
+                        var excelEntry = archive.CreateEntry("INDICE_GERAL.xlsx");
+                        using (var entryStream = excelEntry.Open())
+                        using (var excelStream = new MemoryStream())
+                        {
+                            workbook.SaveAs(excelStream);
+                            var bytes = excelStream.ToArray();
+                            await entryStream.WriteAsync(bytes, 0, bytes.Length);
+                        }
+                    }
+                }
+                return File(ms.ToArray(), "application/zip", $"BACKUP_COMPLETO_{DateTime.Now:MM_yyyy}.zip");
+            }
+        }
+
+
+        private byte[] GerarDocumentoQuestPDF(Terrenos terreno)
+        {
+            return Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Margin(1, Unit.Centimetre);
+                    page.Header().Text($"Relatório: {terreno.Nome}").FontSize(20).SemiBold();
+
+                    page.Content().Column(col =>
+                    {
+                        col.Item().Text($"Cidade: {terreno.Cidade}");
+                        col.Item().Text($"Proprietária: {terreno.Proprietaria}");
+
+                        foreach (var rel in terreno.Relatorios)
+                        {
+                            col.Item().PaddingTop(10).Text($"Data: {rel.DataCriacao:dd/MM/yyyy}");
+                            col.Item().Text(rel.Descricao);
+                        }
+                    });
+                });
+            }).GeneratePdf();
         }
     }
 }
