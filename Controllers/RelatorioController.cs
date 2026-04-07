@@ -79,10 +79,8 @@ namespace Sistema.controllers
             Console.WriteLine("Requisição de relatório recebida!");
             try
             {
-                
 
-
-                // Validação básica: O terreno existe?
+                // Validação do terreno
                 var terrenoExiste = await _context.Terrenos.AnyAsync(t => t.Id == dados.TerrenoId);
                
                 if (!terrenoExiste)
