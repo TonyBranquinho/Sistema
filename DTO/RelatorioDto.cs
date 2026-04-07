@@ -3,15 +3,21 @@
     public class RelatorioDto
     {
         public int TerrenoId { get; set; }
-        public string ImagemBase64 { get; set; }
         public string Descricao { get; set; }
 
-        public RelatorioDto() { }
 
-        public RelatorioDto(int terrenoId, string imagemBase64, string descricao)
+        public List<string> ImagensBase64 { get; set; }
+
+
+        public RelatorioDto()
+        {
+            ImagensBase64 = new List<string>();
+        }
+
+        public RelatorioDto(int terrenoId, List<string> imagensBase64, string descricao)
         {
             TerrenoId = terrenoId;
-            ImagemBase64 = imagemBase64;
+            ImagensBase64 = imagensBase64;
             Descricao = descricao;
         }
     }

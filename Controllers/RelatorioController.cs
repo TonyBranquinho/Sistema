@@ -65,9 +65,9 @@ namespace Sistema.controllers
             return Ok(terrenos);
         }
 
-                
 
-        
+
+
 
 
 
@@ -76,127 +76,83 @@ namespace Sistema.controllers
         [HttpPost("relatorio")]
         public async Task<IActionResult> Relatorio([FromBody] RelatorioDto dados)
         {
-            Console.WriteLine("Requisição de relatório recebida!");
             try
             {
-
-                // Validação do terreno
                 var terrenoExiste = await _context.Terrenos.AnyAsync(t => t.Id == dados.TerrenoId);
-               
-                if (!terrenoExiste)
-                {
-                    return BadRequest(new { sucesso = false, mensagem = "Terreno não encontrado, recarregue a pagina e selecione novamente." });
-                }
+                if (!terrenoExiste) return BadRequest(new { sucesso = false, mensagem = "Terreno não encontrado." });
 
-                if (string.IsNullOrEmpty(dados.ImagemBase64))
-                {
-                    return BadRequest(new { sucesso = false, mensagem = "É necessário incluir pelo menos uma foto." });
-                }
+                if (dados.ImagensBase64 == null || !dados.ImagensBase64.Any())
+                    return BadRequest(new { sucesso = false, mensagem = "Inclua pelo menos uma foto." });
 
-
-
-                var claimValue = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var claimValue = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 int usuarioId = int.Parse(claimValue);
 
-
-                // Cria o relatório
+                // 1. Salva o Relatório primeiro
                 var novoRelatorio = new Relatorios
                 {
                     Descricao = dados.Descricao,
                     TerrenoId = dados.TerrenoId,
                     UsuarioId = usuarioId,
-                    DataCriacao = DateTime.Now,
-                    Fotos = new List<Foto>() // Inicializa a lista vazia
+                    DataCriacao = DateTime.Now
                 };
 
-
-                
-                // A string Base64 do navegador vem com um cabeçalho (ex: "data:image/jpeg;base64,...")
-                // Esta linha localiza a vírgula e pega apenas o que vem depois dela, que é o código da imagem real
-                var base64Data = dados.ImagemBase64.Substring(dados.ImagemBase64.IndexOf(",") + 1);
-
-                // Converte a string de texto Base64 em um array de bytes (dados binários que formam o arquivo)
-                byte[] imageBytes = Convert.FromBase64String(base64Data);
-
-                // Directory.GetCurrentDirectory() pega a pasta raiz do projeto
-                // Path.Combine junta os nomes de pastas garantindo que as barras ( \ ou / ) fiquem corretas conforme o sistema operacional
-                var pastaFotos = Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "fotos");
-
-                // Verifica se a pasta "wwwroot/fotos" existe no servidor; se não existir, o sistema a cria automaticamente
-                if (System.IO.Directory.Exists(pastaFotos)) System.IO.Directory.CreateDirectory(pastaFotos);
-
-                // Guid.NewGuid() gera um código aleatório único (ex: a1b2-c3d4...). 
-                // Isso evita que, se dois usuários mandarem fotos com o mesmo nome original, uma apague a outra.
-                var nomeArquivo = $"foto_{Guid.NewGuid()}.jpg";
-
-                // Cria o caminho final: a pasta onde salvar + o nome único do arquivo
-                var caminhoCompleto = Path.Combine(pastaFotos, nomeArquivo);
-
-                // Grava os bytes convertidos no disco rígido do servidor criando o arquivo .jpg
-                await System.IO.File.WriteAllBytesAsync(caminhoCompleto, imageBytes);
-
-
-                // ------------- META DADOS EXIF ----------------------------
-                var resultado = new Foto();
-
-                try
-                {
-                    // Lê todos os diretórios de metadados do arquivo transfromato em Bytes (Exif, IPTC, etc)
-                    var diretorios = ImageMetadataReader.ReadMetadata(new MemoryStream(imageBytes));
-
-                    // 1. Capturando a Data Original (Sub-IFD do Exif)
-                    var subIfdDirectory = diretorios.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-                    if (subIfdDirectory != null && subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out var data))
-                    {
-                        resultado.DataFoto = data;
-                    }
-
-                    // 2. Capturando Coordenadas GPS
-                    var gpsDirectory = diretorios.OfType<GpsDirectory>().FirstOrDefault();
-                    if (gpsDirectory != null)
-                    {
-                        var lat = gpsDirectory.GetRationalArray(GpsDirectory.TagLatitude);
-                        var lon = gpsDirectory.GetRationalArray(GpsDirectory.TagLongitude);
-                        var latRef = gpsDirectory.GetString(GpsDirectory.TagLatitudeRef);
-                        var lonRef = gpsDirectory.GetString(GpsDirectory.TagLongitudeRef);
-
-                        if (lat != null && lon != null)
-                        {
-                            resultado.Latitude = (decimal)(lat[0].ToDouble() + lat[1].ToDouble() / 60 + lat[2].ToDouble() / 3600) * (latRef == "S" ? -1 : 1);
-                            resultado.Longitude = (decimal)(lon[0].ToDouble() + lon[1].ToDouble() / 60 + lon[2].ToDouble() / 3600) * (lonRef == "W" ? -1 : 1);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Em um sistema real, logar o erro: "Arquivo não contém metadados ou está corrompido"
-                    Console.WriteLine($"Erro ao ler metadados: {ex.Message}");
-                }
-
-                // ----------------------------------------------------------
-
-
-                // Cria o objeto foto com o nome do arquivo que foi para o wwwroot
-                var novaFoto = new Foto
-                {
-                    NomeArquivo = nomeArquivo,
-                    DataFoto = resultado.DataFoto,
-                    Latitude = resultado.Latitude,
-                    Longitude = resultado.Longitude
-                };
-
-                novoRelatorio.Fotos.Add(novaFoto);
-
-                // Salva tudo no banco
                 _context.Relatorios.Add(novoRelatorio);
                 await _context.SaveChangesAsync();
 
-                
-                return Ok(new { sucesso = true, mensagem = "Relatório recebido com sucesso!" });
+                // 2. Loop para processar cada foto da lista
+                foreach (var imagemBase64 in dados.ImagensBase64)
+                {
+                    var base64Data = imagemBase64.Substring(imagemBase64.IndexOf(",") + 1);
+                    byte[] imageBytes = Convert.FromBase64String(base64Data);
+
+                    // Uso explícito de System.IO para evitar erro CS0104
+                    var pastaFotos = Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "fotos");
+                    if (!System.IO.Directory.Exists(pastaFotos)) System.IO.Directory.CreateDirectory(pastaFotos);
+
+                    var nomeArquivo = $"foto_{Guid.NewGuid()}.jpg";
+                    var caminhoCompleto = Path.Combine(pastaFotos, nomeArquivo);
+                    await System.IO.File.WriteAllBytesAsync(caminhoCompleto, imageBytes);
+
+                    var novaFoto = new Foto
+                    {
+                        NomeArquivo = nomeArquivo,
+                        RelatorioId = novoRelatorio.Id
+                    };
+
+                    // Extração de Metadados
+                    try
+                    {
+                        var diretorios = ImageMetadataReader.ReadMetadata(new MemoryStream(imageBytes));
+                        var subIfd = diretorios.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+                        if (subIfd != null && subIfd.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out var data))
+                            novaFoto.DataFoto = data;
+
+                        var gps = diretorios.OfType<GpsDirectory>().FirstOrDefault();
+                        if (gps != null)
+                        {
+                            var lat = gps.GetRationalArray(GpsDirectory.TagLatitude);
+                            var lon = gps.GetRationalArray(GpsDirectory.TagLongitude);
+                            var latRef = gps.GetString(GpsDirectory.TagLatitudeRef);
+                            var lonRef = gps.GetString(GpsDirectory.TagLongitudeRef);
+                            if (lat != null && lon != null)
+                            {
+                                novaFoto.Latitude = (decimal)(lat[0].ToDouble() + lat[1].ToDouble() / 60 + lat[2].ToDouble() / 3600) * (latRef == "S" ? -1 : 1);
+                                novaFoto.Longitude = (decimal)(lon[0].ToDouble() + lon[1].ToDouble() / 60 + lon[2].ToDouble() / 3600) * (lonRef == "W" ? -1 : 1);
+                            }
+                        }
+                    }
+                    catch { /* Ignora erro de metadados se a foto não tiver */ }
+
+                    // IMPORTANTE: Use o nome correto da sua tabela de fotos abaixo
+                    _context.Foto.Add(novaFoto);
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { sucesso = true, mensagem = "Relatório e fotos salvos com sucesso!" });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { sucesso = false, mensagem = "Erro inesperado ao salvar, recarregue a pagina e tente novamente." + ex.Message });
+                return BadRequest(new { sucesso = false, mensagem = "Erro: " + ex.Message });
             }
         }
 

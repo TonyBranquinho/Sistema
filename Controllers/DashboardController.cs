@@ -42,7 +42,8 @@ namespace Sistema.Controllers
 
             var terrenos = await _context.Terrenos
                 .AsNoTracking()
-                .Select(t => new { 
+                .Select(t => new
+                {
                     t.Id,
                     //t.Matricula,
                     t.Nome,
@@ -51,7 +52,7 @@ namespace Sistema.Controllers
                     t.Proprietaria
                 })
                 .OrderBy(t => t.Id)                    // necessário para paginação
-                .Skip((pagina -1) * tamanhoPagina)
+                .Skip((pagina - 1) * tamanhoPagina)
                 .Take(tamanhoPagina)
                 .ToListAsync();
 
@@ -119,8 +120,9 @@ namespace Sistema.Controllers
         public async Task<IActionResult> GerarPdfs([FromBody] List<int> idsSelecionados)
         {
             var terrenos = await _context.Terrenos
-                .Include(t => t.Relatorios)
                 .Where(t => idsSelecionados.Contains(t.Id))
+                .Include(t => t.Relatorios)
+                    .ThenInclude(r => r.Fotos)                
                 .ToListAsync();
 
             using (var ms = new MemoryStream())
@@ -141,6 +143,53 @@ namespace Sistema.Controllers
             }
         }
 
+        private byte[] GerarDocumentoQuestPDF(Terrenos terreno)
+        {
+            var pastaFotos = Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "fotos");
+
+            return Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Margin(1, Unit.Centimetre);
+                    page.Header().Text($"Relatório: {terreno.Nome}").FontSize(20).SemiBold();
+
+                    page.Content().Column(col =>
+                    {
+                        col.Item().Text($"Cidade: {terreno.Cidade}");
+                        col.Item().Text($"Proprietária: {terreno.Proprietaria}");
+
+                        foreach (var rel in terreno.Relatorios)
+                        {
+                            col.Item().PaddingTop(15).BorderTop(1).PaddingBottom(5).Text($"Relato de {rel.DataCriacao:dd/MM/yyyy}").Bold();
+                            col.Item().Text(rel.Descricao);
+
+                            // Renderização das Fotos
+                            foreach (var foto in rel.Fotos)
+                            {
+                                var caminhoCompleto = Path.Combine(pastaFotos, foto.NomeArquivo);
+                                Console.WriteLine($"Procurando foto: {caminhoCompleto} — Existe: {System.IO.File.Exists(caminhoCompleto)}");
+
+                                if (System.IO.File.Exists(caminhoCompleto))
+                                {
+                                    col.Item().PaddingTop(5).Column(fotoCol =>
+                                    {
+                                        // Insere a imagem no PDF
+                                        fotoCol.Item().MaxWidth(300).Image(caminhoCompleto);
+
+                                        // Opcional: Exibir metadados abaixo da foto
+                                        if (foto.Latitude.HasValue && foto.Longitude.HasValue)
+                                        {
+                                            fotoCol.Item().Text($"Coordenadas: {foto.Latitude}, {foto.Longitude}").FontSize(8).Italic();
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                });
+            }).GeneratePdf();
+        }
 
         [HttpGet("gerar-backup-mensal")]
         public async Task<IActionResult> GerarBackupGeral()
@@ -168,7 +217,7 @@ namespace Sistema.Controllers
 
                         // O laço 'foreach (var t in dados)' deve envolver os relatórios
                         foreach (var t in dados)
-                        { 
+                        {
                             foreach (var r in t.Relatorios)
                             {
                                 worksheet.Cell(linha, 1).Value = t.Nome;
@@ -197,7 +246,7 @@ namespace Sistema.Controllers
                                     }
                                 }
                                 linha++;
-                            }                            
+                            }
                         }
 
                         // Salva o Excel dentro do ZIP
@@ -216,28 +265,6 @@ namespace Sistema.Controllers
         }
 
 
-        private byte[] GerarDocumentoQuestPDF(Terrenos terreno)
-        {
-            return Document.Create(container =>
-            {
-                container.Page(page =>
-                {
-                    page.Margin(1, Unit.Centimetre);
-                    page.Header().Text($"Relatório: {terreno.Nome}").FontSize(20).SemiBold();
-
-                    page.Content().Column(col =>
-                    {
-                        col.Item().Text($"Cidade: {terreno.Cidade}");
-                        col.Item().Text($"Proprietária: {terreno.Proprietaria}");
-
-                        foreach (var rel in terreno.Relatorios)
-                        {
-                            col.Item().PaddingTop(10).Text($"Data: {rel.DataCriacao:dd/MM/yyyy}");
-                            col.Item().Text(rel.Descricao);
-                        }
-                    });
-                });
-            }).GeneratePdf();
-        }
+        
     }
 }
