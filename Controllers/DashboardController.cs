@@ -21,7 +21,6 @@ namespace Sistema.Controllers
         private readonly MeuDbContext _context;
         private readonly IWebHostEnvironment _env;
 
-
         public DashboardController(MeuDbContext context, IWebHostEnvironment env)
         {
             _context = context;
@@ -29,43 +28,14 @@ namespace Sistema.Controllers
         }
 
 
-        [HttpGet("listar-propriedades")]
-        public async Task<IActionResult> GetListarPropriedades(
+
+
+        [HttpGet("listar-propriedades-status")] 
+        public async Task<IActionResult> GetStatusPropriedades(
             [FromQuery] int pagina = 1,
             [FromQuery] int tamanhoPagina = 20)
+        {            
 
-        {
-            // Proteção simples contra valores inválidos
-            if (pagina < 1) pagina = 1;
-            if (tamanhoPagina < 1 || tamanhoPagina > 50)
-                tamanhoPagina = 20;
-
-            var terrenos = await _context.Terrenos
-                .AsNoTracking()
-                .Select(t => new
-                {
-                    t.Id,
-                    //t.Matricula,
-                    t.Nome,
-                    t.Area,
-                    t.Cidade,
-                    t.Proprietaria
-                })
-                .OrderBy(t => t.Id)                    // necessário para paginação
-                .Skip((pagina - 1) * tamanhoPagina)
-                .Take(tamanhoPagina)
-                .ToListAsync();
-
-            return Ok(terrenos);
-        }
-
-
-
-
-
-        [HttpGet("status-propriedades")]
-        public async Task<IActionResult> GetStatusPropriedades()
-        {
             // Calcula o intervalo da semana atual (segunda a domingo)
             var hoje = DateTime.Today;
             var diasDesdeSegunda = (int)hoje.DayOfWeek == 0 ? 6 : (int)hoje.DayOfWeek - 1;
@@ -80,6 +50,8 @@ namespace Sistema.Controllers
                 {
                     t.Id,
                     t.Nome,
+                    t.Area,
+                    t.Matricula,
                     t.Cidade,
                     t.Proprietaria,
                     // O banco de dados resolve o status
@@ -94,13 +66,9 @@ namespace Sistema.Controllers
                         .OrderByDescending(r => r.DataCriacao)
                         .Select(r => new
                         {
-                            // Se r.DataCriacao for null (improvável no banco, mas bom prevenir), 
-                            // o JS receberá null e o seu fmtData(iso) já tratará.
+                            r.Id,
                             r.DataCriacao,
-
-                            // Usamos o operador de coalescência nula para evitar strings vazias problemáticas
                             NomeFuncionario = r.Usuario.Nome ?? "Desconhecido",
-
                             Descricao = r.Descricao ?? "Sem descrição disponível.",
 
                             // Garante que Fotos seja sempre uma lista, mesmo que vazia []
@@ -108,6 +76,9 @@ namespace Sistema.Controllers
                         })
                         .FirstOrDefault() // Se não houver relatório, o objeto UltimoRelatorio será null no JSON
                 })
+                .OrderBy(t => t.Id)                    // necessário para paginação
+                .Skip((pagina - 1) * tamanhoPagina)
+                .Take(tamanhoPagina)
                 .ToListAsync();
 
             return Ok(resultado);
@@ -265,6 +236,37 @@ namespace Sistema.Controllers
         }
 
 
-        
+
+
+        [HttpGet("listar-relatorios-terreno/{id}")]
+        public async Task<IActionResult> ListarRelatoriosTerreno(int id)
+        {
+            try
+            {
+                var relatorios = await _context.Relatorios
+                    .Where(r => r.TerrenoId == id)
+                    .Include(r => r.Usuario)
+                    .Include(r => r.Fotos)
+                    .Select(r => new RelatorioGestorDTO
+                    {
+                        Id = r.Id,
+                        NomeFuncionario = r.Usuario.Nome,
+                        //NomePropriedade = r.Terreno.Nome,
+                        Descricao = r.Descricao,
+                        DataCriacao = r.DataCriacao,
+
+                        // Transforma a lista de objetos "Foto" em uma lista de strings (nomes dos arquivos)
+                        Fotos = r.Fotos.Select(f => f.NomeArquivo).ToList()
+                    })
+                    .OrderByDescending(r => r.DataCriacao)
+                    .ToListAsync();
+
+                return Ok(relatorios);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { mensagem = "Erro ao buscar relatórios", detalhe = ex.Message });
+            }
+        }
     }
 }

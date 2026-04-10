@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Sistema.Modelos;
+using System;
 
 public class RelatorioGestorDTO
 {

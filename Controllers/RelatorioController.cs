@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor;
+using DocumentFormat.OpenXml.Office2010.Excel;
 
 namespace Sistema.controllers
 {
@@ -158,35 +159,5 @@ namespace Sistema.controllers
 
 
 
-        [HttpGet("listar-todos")]
-        public async Task<IActionResult> ListarTodos()
-        {
-            try
-            {
-                var relatorios = await _context.Relatorios
-                    .Include(r => r.Terreno)
-                    .Include(r => r.Usuario)
-                    .Include(r => r.Fotos)
-                    .Select(r => new RelatorioGestorDTO
-                    {
-                        Id = r.Id,
-                        NomeFuncionario = r.Usuario.Nome,
-                        NomePropriedade = r.Terreno.Nome,
-                        Descricao = r.Descricao,
-                        DataCriacao = r.DataCriacao,
-
-                        // Transforma a lista de objetos "Foto" em uma lista de strings (nomes dos arquivos)
-                        Fotos = r.Fotos.Select(f => f.NomeArquivo).ToList()
-                    })
-                    .OrderByDescending(r => r.DataCriacao)
-                    .ToListAsync();
-
-                return Ok(relatorios);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { mensagem = "Erro ao buscar relatórios", detalhe = ex.Message });
-            }        
-        }
     }
 }
