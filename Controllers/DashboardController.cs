@@ -52,6 +52,9 @@ namespace Sistema.Controllers
                     t.Matricula,
                     t.Cidade,
                     t.Proprietaria,
+                    t.Latitude,
+                    t.Longitude,
+                    t.MarcadoComoImportante,
                     // O banco de dados resolve o status
                     Status = t.Relatorios.Any(r => r.DataCriacao >= inicioSemana && r.DataCriacao < fimSemana)
                         ? StatusRelatorio.EmDia
