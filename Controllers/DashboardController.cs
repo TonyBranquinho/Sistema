@@ -31,9 +31,7 @@ namespace Sistema.Controllers
 
 
         [HttpGet("listar-propriedades-status")] 
-        public async Task<IActionResult> GetStatusPropriedades(
-            [FromQuery] int pagina = 1,
-            [FromQuery] int tamanhoPagina = 20)
+        public async Task<IActionResult> GetStatusPropriedades()
         {            
 
             // Calcula o intervalo da semana atual (segunda a domingo)
@@ -76,9 +74,7 @@ namespace Sistema.Controllers
                         })
                         .FirstOrDefault() // Se não houver relatório, o objeto UltimoRelatorio será null no JSON
                 })
-                .OrderBy(t => t.Id)                    // necessário para paginação
-                .Skip((pagina - 1) * tamanhoPagina)
-                .Take(tamanhoPagina)
+                
                 .ToListAsync();
 
             return Ok(resultado);
