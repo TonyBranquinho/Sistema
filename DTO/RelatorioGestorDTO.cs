@@ -8,6 +8,13 @@ public class RelatorioGestorDTO
     public string NomePropriedade { get; set; }
     public string Descricao { get; set; }
     public DateTime DataCriacao { get; set; }
+    public List<FotoDTO> Fotos { get; set; } = new List<FotoDTO>();
 
-    public List<string> Fotos { get; set; } = new List<string>();
+    public class FotoDTO
+    {
+        public string NomeArquivo { get; set; }
+        public DateTime? DataFoto { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+    }
 }

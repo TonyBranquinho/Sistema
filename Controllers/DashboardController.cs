@@ -73,7 +73,13 @@ namespace Sistema.Controllers
                             Descricao = r.Descricao ?? "Sem descrição disponível.",
 
                             // Garante que Fotos seja sempre uma lista, mesmo que vazia []
-                            Fotos = r.Fotos.Select(f => f.NomeArquivo).ToList()
+                            Fotos = r.Fotos.Select(f => new RelatorioGestorDTO.FotoDTO
+                            {
+                                NomeArquivo = f.NomeArquivo,
+                                DataFoto = f.DataFoto,
+                                Latitude = f.Latitude,
+                                Longitude = f.Longitude
+                            }).ToList()
                         })
                         .FirstOrDefault() // Se não houver relatório, o objeto UltimoRelatorio será null no JSON
                 })
@@ -255,7 +261,13 @@ namespace Sistema.Controllers
                         DataCriacao = r.DataCriacao,
 
                         // Transforma a lista de objetos "Foto" em uma lista de strings (nomes dos arquivos)
-                        Fotos = r.Fotos.Select(f => f.NomeArquivo).ToList()
+                        Fotos = r.Fotos.Select(f => new RelatorioGestorDTO.FotoDTO
+                        {
+                            NomeArquivo = f.NomeArquivo,
+                            DataFoto = f.DataFoto,
+                            Latitude = f.Latitude,
+                            Longitude = f.Longitude
+                        }).ToList()
                     })
                     .OrderByDescending(r => r.DataCriacao)
                     .ToListAsync();
