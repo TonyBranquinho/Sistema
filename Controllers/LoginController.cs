@@ -36,16 +36,7 @@ namespace Sistema.Controllers
             var usuario = await _context.Usuarios
                 .FirstOrDefaultAsync(u => u.Nome == dados.Usuario);
 
-
-            // NUNCA retorne "usuário não encontrado" separado de "senha incorreta".
-            // Isso permite que um atacante enumere quais usuários existem no sistema
-            // (user enumeration). A mensagem deve ser sempre a mesma nos dois casos.
-
-            // Mesmo se o usuário não existe, roda o Verify com valores falsos.
-            // Isso garante que o tempo de resposta seja igual nos dois casos,
-            // impedindo que alguém descubra usuários válidos pelo tempo da resposta.
-            bool senhaValida;
-
+             bool senhaValida;
 
             if (usuario == null)
             {
@@ -56,7 +47,6 @@ namespace Sistema.Controllers
             {
                 senhaValida = _passwordService.Verificar(dados.Senha, usuario.SenhaHash);
             }
-
 
 
             if (!senhaValida || usuario == null)
@@ -74,7 +64,9 @@ namespace Sistema.Controllers
                 sucesso = true,
                 token = token,
                 usuarioNome = usuario.Nome,
-                usuarioId = usuario.Id
+                usuarioId = usuario.Id,
+                nivelPermisao = usuario.NivelPermisao,
+                ativo = usuario.Ativo
             });
         }
 
@@ -98,7 +90,8 @@ namespace Sistema.Controllers
                 Nome = dados.Nome,
                 Email = dados.Email,
                 SenhaHash = senhaHash,
-                Ativo = true
+                NivelPermisao = (Sistema.Enums.TipoUsuario)dados.NivelPermisao,
+                Ativo = dados.Ativo
             };
 
             _context.Usuarios.Add(novoUsuario);

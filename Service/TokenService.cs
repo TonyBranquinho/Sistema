@@ -37,6 +37,8 @@ namespace Sistema.Service
                 sub = usuario.Id.ToString(),   // subject — identificador do usuário
                 nome = usuario.Nome,
                 email = usuario.Email,
+                perm = usuario.NivelPermisao,
+                ativo = usuario.Ativo,
                 iss = _issuer,                 // issuer — quem emitiu o token
                 iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),               // issued at
                 exp = DateTimeOffset.UtcNow.AddMinutes(_expiryMinutes).ToUnixTimeSeconds() // expiry

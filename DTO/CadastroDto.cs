@@ -1,4 +1,6 @@
 ﻿
+using Sistema.Enums;
+
 namespace Sistema.DTO
 {
     public class CadastroDto
@@ -6,7 +8,9 @@ namespace Sistema.DTO
         public string Nome { get; set; }
         public string Email { get; set; }
         public string Senha { get; set; }
-    
+        public int NivelPermisao { get; set; }
+        public bool Ativo { get; set; }
+
 
         public CadastroDto()
         {
